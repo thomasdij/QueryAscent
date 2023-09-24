@@ -1,0 +1,14 @@
+# Core library
+openai==0.27.10
+
+# Environment variable management
+python-dotenv==0.19.2
+
+# Database
+SQLAlchemy==2.0.9
+
+# Data manipulation
+pandas==2.0.0
+
+# Token counting
+tiktoken==0.5.1
