@@ -1,0 +1,11 @@
+test_case_number,iteration_number,database_name,question,schema_partitions,filtered_schema_and_synonyms_df,initial_sql_query,fallback_exception_1,fallback_query_2,fallback_exception_2,fallback_query_3,fallback_exception_3,fallback_query_4,fallback_exception_4,fallback_query_5,fallback_exception_5,fallback_query_5,fallback_exception_5,error_analysis_content_1,error_analysis_content_2,error_analysis_content_3,error_analysis_content_4,error_analysis_content_5,error_analysis_content_6,answer
+1,1,dvdrental,What percentage of movies from 1999 had male leads?,1,"   index table_name   column_name data_type  synonym_list
+0    119       film  release_year   integer           NaN
+1    121  inventory       film_id  smallint           NaN
+2    127       film       film_id   integer           NaN","SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM film WHERE release_year = 1999) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)","division by zero
+","SELECT COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM film WHERE release_year = 1999), 0) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)",,,,,,,,,,,,,,,,"  ?column?
+0     None"

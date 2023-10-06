@@ -3,6 +3,7 @@ import tiktoken
 import pandas as pd
 import ast
 from utils import truncate_content
+from global_event_publisher import event_publisher
 from execution_manager import prompt_on_df
 
 TOKEN_CAP = 4096
@@ -59,7 +60,11 @@ def create_list_of_df_partitions_limited_by_token_count(schema_and_synonyms_df, 
         partitioned_df_list.append(pd.concat(current_df_list, ignore_index=False))
 
     # df_list now contains your partitioned DataFrames
-    logging.debug(f"Number of df partitions by token count: {len(partitioned_df_list)}")  
+    schema_partitions = len(partitioned_df_list)
+    
+    event_publisher.emit("schema_partitions_set", schema_partitions)
+
+    logging.debug(f"Number of df partitions by token count: {schema_partitions}")  
     return partitioned_df_list
 
 def identify_rows_using_LLM(partitioned_df_list, prompt_directive):
@@ -84,7 +89,9 @@ def prompt_for_df_from_token_limited_df(prompt_directive, token_limited_df):
 def filter_schema_and_synonyms_df(schema_and_synonyms_df, question):
 
     identify_data_rows_prompt_directive = (
-    "I have a user question and a database schema table. "
+    "I have a user question and a database schema table. The Database Schema Table is meta-information: each row"
+    "represents a column in a specific table within the database. It details the 'table_name', 'column_name', "
+     "'data_type', and, if applicable, 'synonym_list' for that column. "
     "Your task is to identify rows from the database schema table that could be related to the user's question. "
     "Only return the index numbers of those rows as a list. Do not include any descriptions or explanations.\n"
     "Here is the question: " + question + "\nHere is the Database Schema Table:\n"
@@ -93,15 +100,15 @@ def filter_schema_and_synonyms_df(schema_and_synonyms_df, question):
     schema_and_synonyms_df_filtered_for_data = prompt_for_df_from_token_limited_df(
         identify_data_rows_prompt_directive, schema_and_synonyms_df)
 
-
     logging.debug("schema_and_synonyms_df_filtered_for_data:")
     logging.debug(f"PROMPT: {truncate_content(schema_and_synonyms_df_filtered_for_data)}\n")
 
     identify_join_rows_prompt_directive = (
     "I have a table of columns that need to be joined and a full database schema table. "
     "Your task is to identify rows from the full database schema table that could be used to join the columns from the table of "
-    "columns that need to be joined. " 
-    "Only return the index numbers of those rows as a list. Do not include any descriptions or explanations.\n"
+    "columns that need to be joined. The Database Schema Table is meta-information: each row represents a column in a specific"
+    " table within the database. It details the 'table_name', 'column_name', 'data_type', and, if applicable, 'synonym_list' for"
+    " that column. Only return the index numbers of those rows as a list. Do not include any descriptions or explanations.\n"
     "Here is the table of columns that need to be joined:\n" + schema_and_synonyms_df_filtered_for_data.to_string() + 
     "\nHere is the Full Database Schema Table:\n"
     )
@@ -116,6 +123,8 @@ def filter_schema_and_synonyms_df(schema_and_synonyms_df, question):
         schema_and_synonyms_df_filtered_for_joins)
     
     schema_and_synonyms_df_for_data_or_joins.drop_duplicates(inplace=True)
+
+    event_publisher.emit("filtered_schema_and_synonyms_set", schema_and_synonyms_df_for_data_or_joins)
 
     logging.debug("schema_and_synonyms_df_for_data_or_joins:")
     logging.debug(f"PROMPT: {truncate_content(schema_and_synonyms_df_for_data_or_joins)}\n")

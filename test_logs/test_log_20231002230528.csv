@@ -1,0 +1,79 @@
+test_case_number,iteration_number,database_name,question,schema_partitions,filtered_schema_and_synonyms_df,initial_sql_query,fallback_exception_1,fallback_query_2,fallback_exception_2,fallback_query_3,fallback_exception_3,fallback_query_4,fallback_exception_4,fallback_query_5,fallback_exception_5,fallback_query_5,fallback_exception_5,error_analysis_content_1,error_analysis_content_2,error_analysis_content_3,error_analysis_content_4,error_analysis_content_5,error_analysis_content_6,answer
+1,1,dvdrental,What is the frequency of each film genre?,1,"   index                  table_name column_name          data_type  synonym_list
+0      8                        film       title  character varying           NaN
+1     65  nicer_but_slower_film_list    category  character varying           NaN
+2     72      sales_by_film_category    category  character varying           NaN
+3     84                    category        name  character varying           NaN
+4    112                   film_list    category  character varying           NaN","SELECT category, COUNT(*) AS frequency
+FROM film
+GROUP BY category;","column ""category"" does not exist
+LINE 1: SELECT category, COUNT(*) AS frequency
+               ^
+","SELECT name AS category, COUNT(*) AS frequency
+FROM category
+GROUP BY name;",,,,,,,,,,,,,,,,"       category  frequency
+0        Family          1
+1         Games          1
+2     Animation          1
+3   Documentary          1
+4      Classics          1
+5        Sports          1
+6           New          1
+7      Children          1
+8         Music          1
+9        Travel          1
+10      Foreign          1
+11       Horror          1
+12        Drama          1
+13       Action          1
+14       Sci-Fi          1
+15       Comedy          1"
+1,2,dvdrental,What is the frequency of each film genre?,1,"   index                  table_name column_name          data_type  synonym_list
+0      8                        film       title  character varying           NaN
+1     65  nicer_but_slower_film_list    category  character varying           NaN
+2     72      sales_by_film_category    category  character varying           NaN
+3     84                    category        name  character varying           NaN
+4    112                   film_list    category  character varying           NaN","SELECT category, COUNT(*) AS frequency
+FROM film
+GROUP BY category;","column ""category"" does not exist
+LINE 1: SELECT category, COUNT(*) AS frequency
+               ^
+","SELECT name AS category, COUNT(*) AS frequency
+FROM category
+GROUP BY name;",,,,,,,,,,,,,,,,"       category  frequency
+0        Family          1
+1         Games          1
+2     Animation          1
+3   Documentary          1
+4      Classics          1
+5        Sports          1
+6           New          1
+7      Children          1
+8         Music          1
+9        Travel          1
+10      Foreign          1
+11       Horror          1
+12        Drama          1
+13       Action          1
+14       Sci-Fi          1
+15       Comedy          1"
+2,1,dvdrental,What percentage of movies from 1999 had male leads?,1,"   index table_name   column_name data_type  synonym_list
+0    119       film  release_year   integer           NaN
+1    121  inventory       film_id  smallint           NaN
+2    127       film       film_id   integer           NaN","SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM film WHERE release_year = 1999) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)","division by zero
+","SELECT COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM film WHERE release_year = 1999), 0) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)",,,,,,,,,,,,,,,,"  ?column?
+0     None"
+2,2,dvdrental,What percentage of movies from 1999 had male leads?,1,"   index table_name   column_name data_type  synonym_list
+0    119       film  release_year   integer           NaN
+1    121  inventory       film_id  smallint           NaN
+2    127       film       film_id   integer           NaN","SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM film WHERE release_year = 1999) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)","division by zero
+","SELECT COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM film WHERE release_year = 1999), 0) 
+FROM film 
+WHERE film_id IN (SELECT film_id FROM inventory)",,,,,,,,,,,,,,,,"  ?column?
+0     None"

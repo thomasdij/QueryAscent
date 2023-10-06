@@ -1,41 +1,142 @@
 import unittest
 from unittest.mock import patch
-from main import main_program  # Make sure to import main_program appropriately
+from main import main_program
+from database_and_synonym_manager import set_database_connection, set_schema, set_API_key
+from execution_manager import run_sql, prompt_on_df
+from global_event_publisher import event_publisher
+import pandas as pd
+import ast
+import os
+from datetime import datetime
+import csv
+from dotenv import load_dotenv
+
+def sample_data_from_schema(df_schema: pd.DataFrame, database_url: str) -> pd.DataFrame:
+    # Initialize new columns for storing sample values
+    df_schema['sample_value_1'] = None
+    df_schema['sample_value_2'] = None
+    df_schema['sample_value_3'] = None
+
+    for idx, row in df_schema.iterrows():
+        table = row['table_name']
+        column = row['column_name']
+
+        # Create the SQL query to fetch up to 3 sample values
+        sql = f'SELECT "{column}" FROM "{table}" LIMIT 3'
+
+        # Run the query and fetch the results
+        sample_values = run_sql(sql, database_url)
+        
+        # If the query returned results, store them in the new columns
+        if not sample_values.empty:
+            for i, val in enumerate(sample_values[column]):
+                df_schema.at[idx, f'sample_value_{i+1}'] = val
+                
+    return df_schema
+
+def create_question_list(df_schema: pd.DataFrame) -> list:
+    directive = (
+        "Write me 100 questions to ask based on the below information about my database. "
+        "Give your answer as a list of strings."
+        "Instead of using the column names, use normal English words. "
+        )
+    question_list = ast.literal_eval(prompt_on_df(df_schema, directive))
+    return question_list
+
+def generate_questions():
+    set_API_key()
+    database_url = set_database_connection()
+    df_schema = set_schema(database_url)
+    schema_with_samples_df = sample_data_from_schema(df_schema, database_url)
+    return create_question_list(schema_with_samples_df)
+
 
 class TestMainProgram(unittest.TestCase):
 
     @patch('builtins.input', side_effect=["Question1", "Question2", "Question3"])
     @patch('builtins.print')
     def test_main_program(self, mock_print, mock_input):
+
+        # Check if DATABASE environment variable is set
+        load_dotenv()
+        database_name = os.getenv("DATABASE")
+        if database_name is None:
+            raise EnvironmentError("DATABASE environment variable is not set")
+
         questions = [
-            "What is the frequency of each film genre?",
-            "How many customers have made more than five rentals?"
+           "What is the frequency of each film genre?",
+           "What percentage of movies had male actors?",
         ]
 
-        log_file = "test_log.txt"
+        column_names = ["test_case_number", "iteration_number", "database_name", "question",
+                        "schema_partitions", "filtered_schema_and_synonyms_df",
+                        "initial_sql_query", "fallback_exception_1",
+                        "fallback_query_2", "fallback_exception_2", "fallback_query_3",
+                        "fallback_exception_3", "fallback_query_4", "fallback_exception_4",
+                        "fallback_query_5", "fallback_exception_5", "fallback_query_5", "fallback_exception_5", 
+                        "error_analysis_content_1", "error_analysis_content_2", "error_analysis_content_3",
+                        "error_analysis_content_4", "error_analysis_content_5",
+                        "error_analysis_content_6", "answer"]
 
-        run_number = 1  # Initialize run number
+        # Create test_logs directory
+        if not os.path.exists('test_logs'):
+            os.makedirs('test_logs')
 
-        with open(log_file, "w") as f:
-            for question in questions:
-                # Run the program
-                main_program(question)
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        csv_file = f"test_logs/test_log_{timestamp}.csv"
 
-                # Log the output to file
-                output = "\n".join([str(args[0]) for args, _ in mock_print.call_args_list])
-                f.write(f"Run Number: {run_number}\n")  # Log the run number
-                f.write(f"Question: {question}\n")
-                f.write(f"Output:\n{output}\n")
-                f.write("-------\n")
+        test_case_number = 1
+        iteration_quantity = 2
 
-                # Increment run number
-                run_number += 1
+        captured_data = {}
+        events = ["schema_partitions_set", "filtered_schema_and_synonyms_set",
+                  "initial_sql_query_set", "fallback_exception_0_set",
+                  "fallback_query_1_set", "fallback_exception_1_set",
+                  "fallback_query_2_set", "fallback_exception_2_set", "fallback_query_3_set",
+                  "fallback_exception_3_set", "fallback_query_4_set", "fallback_exception_4_set",
+                  "fallback_query_5_set", "fallback_exception_5_set", "error_analysis_content_1_set",
+                  "error_analysis_content_2_set", "error_analysis_content_3_set",
+                  "error_analysis_content_4_set", "error_analysis_content_5_set",
+                  "error_analysis_content_6_set", "answer_set"] 
 
-                # Clear the mock's call list for the next iteration
-                mock_print.reset_mock()
+        def capture_event(data, event_name):
+            print(f"Captured event: {event_name}")  # Debugging
+            captured_data[event_name] = data
+
+        for event_name in events:
+            def handler(data, event_name=event_name):
+                capture_event(data, event_name)
+            event_publisher.on(event_name, handler)
+
+        try:
+            with open(csv_file, mode='w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(column_names)
+
+                for question in questions:
+                    for iteration_number in range(1, iteration_quantity + 1):
+                        
+                        # Clear the mock's call list and captured data
+                        mock_print.reset_mock()
+                        captured_data.clear()
+                        
+                        # Run the program
+                        main_program(question)
+
+                        row_data = [test_case_number, iteration_number, database_name, question]
+                        
+                        for event_name in events:
+                            row_data.append(captured_data.get(event_name, None))
+
+                        writer.writerow(row_data)
+
+                    test_case_number += 1
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     unittest.main()
+
 
         # questions = [
         #     "What is the frequency of each film genre?"
